@@ -65,8 +65,41 @@ const user_payment = new mongoose.Schema({
   },
 });
 
+const cart_item = new mongoose.Schema({
+  session_id: {
+    type: Number,
+    required: true,
+  },
+
+  product_id: {
+    type: Number,
+    ref: "Product",
+  },
+  quantity: {
+    type: Number,
+    required: true,
+  },
+});
+const shopping_session = new mongoose.Schema({
+  id: {
+    type: Number,
+    ref: "Cart",
+  },
+
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  total: {
+    type: Number,
+    required: true,
+  },
+});
+
 const User = mongoose.model("user", user);
 const User_address = mongoose.model("user_address", user_address);
 const User_payment = mongoose.model("user_payment", user_payment);
+const Cart = mongoose.model("cart_item", cart_item);
+const Session = mongoose.model("shopping_session", shopping_session);
 
-module.exports = { User, User_address, User_payment };
+module.exports = { User, User_address, User_payment, Cart, Session };

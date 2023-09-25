@@ -11,8 +11,16 @@ const app = express();
 
 const router = express.Router();
 
+router.get("/getProducts", async (req, res) => {
+  const Products = await Product.find({});
+
+  if (Products) {
+    res.status(200).send({ result: Products });
+  }
+});
+
 router.post("/getProductDetails", async (req, res) => {
-  const productExist = await Product.findById("650f080093df4cfe1b308a75");
+  const productExist = await Product.findById(req.body.id);
 
   const getCategoryData = await Product_category.findOne({
     id: productExist.category_id,
