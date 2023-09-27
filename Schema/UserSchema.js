@@ -66,13 +66,13 @@ const user_payment = new mongoose.Schema({
 });
 
 const cart_item = new mongoose.Schema({
-  session_id: {
-    type: Number,
-    required: true,
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   },
 
   product_id: {
-    type: Number,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Product",
   },
   quantity: {
@@ -81,11 +81,6 @@ const cart_item = new mongoose.Schema({
   },
 });
 const shopping_session = new mongoose.Schema({
-  id: {
-    type: Number,
-    ref: "Cart",
-  },
-
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

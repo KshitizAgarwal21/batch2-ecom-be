@@ -46,7 +46,7 @@ router.get("/getUserPaymentDetails", async (req, res) => {
 });
 
 router.post("/useraddress", async (req, res) => {
-  const token = req.headers.authorization;
+  const token = req.headers.authorization.substring(7);
   // console.log(token);
   // console.log(jwt.verify(token, "mysalt"));
 
