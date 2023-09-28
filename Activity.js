@@ -27,20 +27,23 @@ router.post("/addtocart", async (req, res) => {
 
   const { _id } = jwt.verify(token, "mysalt");
 
+  //firstly check if for the user, the same product is already in the cart or not
   const cart_for_user = await Cart.findOne({
     user_id: _id,
     product_id: req.body.product_id,
   });
-
+  //if product is already there
   if (cart_for_user) {
+    //update the qunatity of that product with new quanity + existing quantity
     const update_product_quantity = await Cart.findOneAndUpdate(
-      { product_id: req.body.product_id },
-      { $set: { quantity: cart_for_user.quantity + req.body.quantity } }
+      { product_id: req.body.product_id, user_id: _id },
+      { $set: { quantity: cart_for_user.quantity + Number(req.body.quantity) } }
     );
-
+    // check if product qunatity updated, then update the shopping session
     if (update_product_quantity) {
+      //find all the products in the cart for that user
       const cart_items_for_user = await Cart.find({ user_id: _id });
-
+      //return me an array with product ids
       if (cart_items_for_user) {
         let productPrices = cart_items_for_user.map(async (elem) => {
           return {
@@ -48,15 +51,15 @@ router.post("/addtocart", async (req, res) => {
             quant: elem.quantity,
           };
         });
-
+        // wait for the array of promises to get resolved
         Promise.all(productPrices).then(async (resp) => {
           let shopping_total = 0;
           resp.forEach((elem) => {
             shopping_total += elem.prm.price * elem.quant;
           });
+          //calculate the shopping total of all items in cart
 
-          console.log(shopping_total);
-
+          //update the total in shopping session model
           const update_shopping_session = await Session.findOneAndUpdate(
             { user_id: _id },
             { $set: { total: shopping_total } }
@@ -69,16 +72,19 @@ router.post("/addtocart", async (req, res) => {
         });
       }
     }
-  } else {
+  }
+  // if the product is not in the cart
+  else {
     const cart_item = {
       user_id: _id,
       product_id: req.body.product_id,
-      quantity: req.body.quantity,
+      quantity: Number(req.body.quantity),
     };
 
     const new_cart_item = new Cart(cart_item);
-
+    //add new product in the cart
     const addedToCart = await new_cart_item.save();
+    //once it is saved, find all the products in the cart for this user to get their prices and sum total of them to update in the shopping session
     const cartExist = await Cart.find({ user_id: _id });
     //for a particluar user id there may be many products
     //[{user_id, product_id, quantity},{user_id, product_id, quantity}, {user_id, product_id, quantity}]
@@ -86,17 +92,20 @@ router.post("/addtocart", async (req, res) => {
       let total = 0;
 
       let productsInCart = cartExist.map(async (elem) => {
-        return await Product.findById(elem.product_id);
+        return {
+          prm: await Product.findById(elem.product_id),
+          quant: elem.quantity,
+        };
       });
 
       // console.log(productsInCart);
 
       Promise.all(productsInCart).then(async (resp) => {
         resp.forEach((elem) => {
-          total = total + elem.price;
+          total = total + elem.prm.price * elem.quant;
         });
 
-        console.log("total " + total);
+        // check if shopping session already exist for this user
         const shopping_session_exists = await Session.findOne({ user_id: _id });
         if (shopping_session_exists) {
           const update_total = await Session.findOneAndUpdate(
@@ -107,7 +116,9 @@ router.post("/addtocart", async (req, res) => {
           if (update_total) {
             res.status(200).send("updated shopping session as well");
           }
-        } else {
+        }
+        //create a new shopping session
+        else {
           const shopping_session = {
             user_id: _id,
             total: total,

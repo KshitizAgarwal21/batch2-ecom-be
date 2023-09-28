@@ -32,11 +32,6 @@ router.post("/getProductDetails", async (req, res) => {
     id: productExist.discount_id,
   });
 
-  console.log(getCategoryData);
-  console.log(productExist);
-  console.log(getInventoryData);
-  console.log(getDiscountData);
-
   res
     .status(200)
     .send({ getCategoryData, getDiscountData, getInventoryData, productExist });
