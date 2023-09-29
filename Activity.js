@@ -65,9 +65,10 @@ router.post("/addtocart", async (req, res) => {
             { $set: { total: shopping_total } }
           );
           if (update_shopping_session) {
-            res
-              .status(200)
-              .send("cart and shopping session updated successfully");
+            res.status(200).send({
+              msg: "cart and shopping session updated successfully",
+              result: resp,
+            });
           }
         });
       }
@@ -114,7 +115,10 @@ router.post("/addtocart", async (req, res) => {
           );
 
           if (update_total) {
-            res.status(200).send("updated shopping session as well");
+            res.status(200).send({
+              msg: "updated shopping session as well",
+              result: resp,
+            });
           }
         }
         //create a new shopping session
@@ -127,7 +131,10 @@ router.post("/addtocart", async (req, res) => {
           const Session_details = new Session(shopping_session);
           const session_created = await Session_details.save();
           if (addedToCart && session_created) {
-            res.status(200).send("data added successfully");
+            res.status(200).send({
+              msg: "data added successfully",
+              result: resp,
+            });
           }
         }
       });
@@ -142,6 +149,29 @@ router.post("/addtocart", async (req, res) => {
     //   });
     //   console.log(total);
     // });
+  }
+});
+
+router.get("/getCart", async (req, res) => {
+  const token = req.headers.authorization.substring(7);
+  // console.log(token);
+  // console.log(jwt.verify(token, "mysalt"));
+
+  const { _id } = jwt.verify(token, "mysalt");
+
+  const fetchCart = await Cart.find({ user_id: _id });
+
+  if (fetchCart) {
+    let productsInCart = fetchCart.map(async (elem) => {
+      return {
+        prm: await Product.findById(elem.product_id),
+        quant: elem.quantity,
+      };
+    });
+
+    Promise.all(productsInCart).then((resp) => {
+      res.status(200).send({ result: resp });
+    });
   }
 });
 
