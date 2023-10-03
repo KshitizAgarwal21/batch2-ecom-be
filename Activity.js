@@ -13,6 +13,8 @@ const {
   Product_inventory,
   Discount,
 } = require("./Schema/ProductSchema");
+const { Order_details, Ordered_items } = require("./Schema/OrderSchema");
+const { default: axios } = require("axios");
 const app = express();
 
 const router = express.Router();
@@ -172,6 +174,87 @@ router.get("/getCart", async (req, res) => {
     Promise.all(productsInCart).then((resp) => {
       res.status(200).send({ result: resp });
     });
+  }
+});
+
+router.post("/checkout", async (req, res) => {
+  const token = req.headers.authorization.substring(7);
+  // console.log(token);
+  // console.log(jwt.verify(token, "mysalt"));
+
+  const { _id } = jwt.verify(token, "mysalt");
+
+  // once payment is approved then the below will occur
+
+  const getTotal = await Session.findOne({ user_id: _id });
+
+  if (getTotal && getTotal.total) {
+    const fetchCart = await Cart.find({ user_id: _id });
+
+    if (fetchCart) {
+      let productsInCart = fetchCart.map(async (elem) => {
+        return {
+          prm: await Product.findById(elem.product_id),
+          quant: elem.quantity,
+        };
+      });
+
+      Promise.all(productsInCart).then(async (resp) => {
+        const order = {
+          user_id: _id,
+          total: getTotal.total,
+        };
+
+        const neworder = new Order_details(order);
+
+        const addedOrder = await neworder.save();
+        if (addedOrder) {
+          //create order items as well.
+          let success = resp.map(async (elem) => {
+            const items = {
+              order_id: addedOrder._id,
+              product_id: elem.prm._id,
+              quantity: elem.quant,
+            };
+
+            const finalItems = new Ordered_items(items);
+
+            return await finalItems.save();
+          });
+          Promise.all(success).then(async (respon) => {
+            const cleanup = await axios.post(
+              "http://localhost:8080/activity/cleanup",
+              {},
+              {
+                headers: {
+                  Authorization: "Bearer " + token,
+                },
+              }
+            );
+
+            if (respon && cleanup.status == 200) {
+              res.status(200).send("order created successfully");
+            }
+          });
+        }
+      });
+    }
+  }
+});
+
+router.post("/cleanup", async (req, res) => {
+  const token = req.headers.authorization.substring(7);
+  // console.log(token);
+  // console.log(jwt.verify(token, "mysalt"));
+
+  const { _id } = jwt.verify(token, "mysalt");
+
+  const cleanup = await Cart.deleteMany({ user_id: _id });
+
+  const deleteSession = await Session.deleteOne({ user_id: _id });
+
+  if (cleanup && deleteSession) {
+    res.status(200).send("successfull");
   }
 });
 
